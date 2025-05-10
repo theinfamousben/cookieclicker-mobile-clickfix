@@ -1038,6 +1038,30 @@ var Game={};
 		
 		NOTE: modding API is susceptible to change and may not always function super-well
 	*/
+	Game.mobileClickFix = {
+		//this is a mod that fixes the issue with mobile browsers where the game doesn't register the hover tooltips and clicking in general, and makes it hard to view stats
+
+		id: 'MobileClickFix',
+		activeTooltip: null,
+
+		init:function() {
+			console.log("===yes, i'm initiated, there's nothing to actually initiate, i just need to have this useless function :D (kill me please somebody just do it)")
+		},
+
+		handleClick:function(target, destination) {
+			console.log(`${target}\n${destination}\n${this.activeTooltip}`);
+			if (target != this.activeTooltip) {
+				this.activeTooltip = target;
+
+			}
+			else {
+				this.activeTooltip = null;
+				eval(destination);
+			}
+		},
+	}
+
+
 	Game.mods={};
 	Game.sortedMods=[];
 	Game.brokenMods=[];
@@ -1186,7 +1210,10 @@ var Game={};
 		Game.Prompt('<id ModData><h3>'+loc("Mod data")+'</h3><div class="block">'+tinyIcon([16,5])+'<div></div>'+loc("These are the mods present in your save data. You may delete some of this data to make your save file smaller.")+'</div><div class="block" style="font-size:11px;">'+str+'</div>',[loc("Back")]);
 	}
 	
+	console.log(Game.mobileClickFix);
+	Game.registerMod('mobileClickFix', Game.mobileClickFix);
 	Game.LoadMod=LoadScript;//loads the mod at the given URL
+
 	
 	if (false)
 	{
@@ -2422,13 +2449,13 @@ Game.Launch=function()
 		Game.getTooltip=function(text,origin,isCrate)
 		{
 			origin=(origin?origin:'middle');
-			if (isCrate) return 'onMouseOut="Game.setOnCrate(0);Game.tooltip.shouldHide=1;" onMouseOver="if (!Game.mouseDown) {Game.setOnCrate(this);Game.tooltip.dynamic=0;Game.tooltip.draw(this,\''+escape(text)+'\',\''+origin+'\');Game.tooltip.wobble();}"';
+			if (isCrate) return 'onMouseOut="Game.setOnCrate(0);Game.tooltip.shouldHide=1;" onClick="Game.setOnCrate(this);Game.tooltip.dynamic=0;Game.tooltip.draw(this,\''+escape(text)+'\',\''+origin+'\');Game.tooltip.wobble();"';
 			else return 'onMouseOut="Game.tooltip.shouldHide=1;" onMouseOver="Game.tooltip.dynamic=0;Game.tooltip.draw(this,\''+escape(text)+'\',\''+origin+'\');Game.tooltip.wobble();"';
 		}
 		Game.getDynamicTooltip=function(func,origin,isCrate)
 		{
 			origin=(origin?origin:'middle');
-			if (isCrate) return 'onMouseOut="Game.setOnCrate(0);Game.tooltip.shouldHide=1;" onMouseOver="if (!Game.mouseDown) {Game.setOnCrate(this);Game.tooltip.dynamic=1;Game.tooltip.draw(this,'+'function(){return '+func+'();}'+',\''+origin+'\');Game.tooltip.wobble();}"';
+			if (isCrate) return 'onMouseOut="Game.setOnCrate(0);Game.tooltip.shouldHide=1;" onClick="Game.setOnCrate(this);Game.tooltip.dynamic=1;Game.tooltip.draw(this,'+'function(){return '+func+'();}'+',\''+origin+'\');Game.tooltip.wobble();"';
 			return 'onMouseOut="Game.tooltip.shouldHide=1;" onMouseOver="Game.tooltip.dynamic=1;Game.tooltip.draw(this,'+'function(){return '+func+'();}'+',\''+origin+'\');Game.tooltip.wobble();"';
 		}
 		Game.attachTooltip=function(el,func,origin)
@@ -2439,8 +2466,27 @@ Game.Launch=function()
 				func=function(str){return function(){return str;};}(str);
 			}
 			origin=(origin?origin:'middle');
-			AddEvent(el,'mouseover',function(func,el,origin){return function(){Game.tooltip.dynamic=1;Game.tooltip.draw(el,func,origin);};}(func,el,origin));
-			AddEvent(el,'mouseout',function(){return function(){Game.tooltip.shouldHide=1;};}());
+			AddEvent(
+				el,
+				'click',
+				Game.mobileClickFix.handleClick('tooltip', 
+					function(func, el, origin) {
+						return function() {
+							Game.tooltip.dynamic = 1;
+							Game.tooltip.draw(el, func, origin)
+						}
+					}
+					(func, el, origin)
+				)
+			);
+			AddEvent(
+				el,
+				'mouseout',
+				function(){
+					return function(){
+						Game.tooltip.shouldHide=1;
+					};
+				}());
 		}
 		Game.tooltip.wobble=function()
 		{
@@ -4066,10 +4112,10 @@ Game.Launch=function()
 		
 		Game.UpdateAscensionModePrompt();
 		
-		AddEvent(l('ascendButton'),'click',function(){
+		AddEvent(l('ascendButton'),'click', Game.mobileClickFix.handleClick('ascendButton', function() {
 			PlaySound('snd/tick.mp3');
 			Game.Reincarnate();
-		});
+		}));
 		
 		Game.ascendl=l('ascend');
 		Game.ascendContentl=l('ascendContent');
